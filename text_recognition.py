@@ -1,15 +1,13 @@
 import json
 import base64
 import boto3
-import easyocr
 import numpy as np
 from PIL import Image
 import io
-import certifi
-os.environ['SSL_CERT_FILE'] = certifi.where()
+import pytesseract
 
+pytesseract.pytesseract.tesseract_cmd = "/opt/bin/tesseract"
 textract = boto3.client('textract')
-reader = easyocr.Reader(['en'], gpu=False)
 
 def method_textract(base64_image):
     image_bytes = base64.b64decode(base64_image)
@@ -26,28 +24,34 @@ def method_textract(base64_image):
     avg_confidence = sum(confidences) / len(confidences) if confidences else 0
     return text, avg_confidence / 100  # Textract confidence is percent
 
-def method_easyocr(base64_image):
+def method_tesseract(base64_image):
     img_bytes = base64.b64decode(base64_image)
     image = Image.open(io.BytesIO(img_bytes))
-    img_np = np.array(image)
 
-    results = reader.readtext(img_np)
+    data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
 
-    texts = [res[1] for res in results]
-    confidences = [res[2] for res in results]
+    texts = []
+    confidences = []
 
-    text = "\n".join(texts)
-    avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+    for i in range(len(data['text'])):
+        if int(data['conf'][i]) > 0:
+            texts.append(data['text'][i])
+            confidences.append(int(data['conf'][i]))
+
+    text = " ".join(texts)
+    avg_confidence = (sum(confidences) / len(confidences) / 100) if confidences else 0
+    
     return text, avg_confidence
 
 def handler(event, context):
     try:
-        base64_image = event.get('image')
+        body = json.loads(event['body'])
+        base64_image = body.get('image')
         if not base64_image:
             return {'error': 'Missing "image" field'}
 
         text_textract, conf_textract = method_textract(base64_image)
-        text_easyocr, conf_easyocr = method_easyocr(base64_image)
+        text_easyocr, conf_easyocr = method_tesseract(base64_image)
 
         # Compare confidences and return best
         if conf_textract >= conf_easyocr:

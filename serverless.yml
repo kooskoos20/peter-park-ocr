@@ -1,25 +1,29 @@
-# # "org" ensures this Service is used with the correct Serverless Framework Access Key.
-# org: personalpeterpark
-# # "app" enables Serverless Framework Dashboard features and sharing them with other Services.
-# app: text-recognition-service
-# # "service" is the name of this project. This will also be added to your AWS resource names.
-# service: text-recognition-service
-
 service: text-recognition-service
+
+layers:
+  tesseractAl2:
+    path: amazonlinux-2
+    compatibleRuntimes:
+      - python3.8
 
 provider:
   name: aws
-  runtime: python3.11
+  runtime: python3.8
   region: us-east-1
   iamRoleStatements:
     - Effect: Allow
       Action:
         - lambda:InvokeFunction
-      Resource: '*'
+      Resource: "*"
     - Effect: Allow
       Action:
         - textract:DetectDocumentText
-      Resource: '*'
+      Resource: "*"
+  ecr:
+    images:
+      tesseract:
+        path: .  # points to Dockerfile
+  architecture: x86_64
 
 functions:
   proxy:
@@ -30,9 +34,9 @@ functions:
           method: post
 
   textRecognition:
-    handler: text_recognition.handler
-    memorySize: 1024
-    timeout: 30
+    image:
+      name: tesseract
+
 
 plugins:
   - serverless-python-requirements

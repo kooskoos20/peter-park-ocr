@@ -4,6 +4,7 @@ import boto3
 import easyocr
 import numpy as np
 from PIL import Image
+import pytesseract
 import io
 
 textract = boto3.client('textract', verify=False)
@@ -43,7 +44,7 @@ base64_image = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQO
 #     return {'error': 'Missing "image" field'}
 
 text_textract, conf_textract = method_textract(base64_image)
-text_easyocr, conf_easyocr = method_easyocr(base64_image)
+text_easyocr, conf_easyocr = method_tesseract(base64_image)
 
 # Compare confidences and return best
 if conf_textract >= conf_easyocr:
